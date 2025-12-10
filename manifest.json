@@ -21,7 +21,6 @@
     }
   ],
   "action": {
-    "default_icon": "icon128.png",
     "default_title": "OLX/FB Lead Agent V8"
   },
   "options_page": "options.html"
