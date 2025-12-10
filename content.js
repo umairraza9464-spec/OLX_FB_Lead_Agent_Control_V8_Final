@@ -1,243 +1,140 @@
-// OLX/FB Lead Agent Control V8 Final - With V6 Full Features
-// Auto/Manual scan, Persistent Duplicate Detection, No-Miss Queue
-
+// Lead Agent - Complete Data Extraction
 const SENT_NUMBERS_KEY = 'sentNumbersLog';
-const REGEX_REGNO = /[A-Z]{2}?[0-9]{1,2}?[A-Z]{1,2}?[0-9]{4}/g;
+const REGEX_REGNO = /[A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{4}/g;
 const REGEX_PHONE = /(91-?)?[6-9]\d{9}/g;
+const REGEX_KM = /\b(\d+)\s*(km|k\.m|kilometers)/gi;
+const REGEX_YEAR = /\b(19|20)\d{2}\b/g;
 
-const seenNumbers = new Set();
-let settings = { autoEnabled: true, defaultNote: '' };
+let seenNumbers = new Set();
 let lastCapturedLead = null;
 
 function cleanText(str) {
-  return str.replace(/\s+/g, ' ').trim();
+  return str.replace(/[^\w\s]/g, ' ').trim();
 }
 
-function getSource() {
-  const host = location.host;
-  if (host.includes('olx')) return 'OLX';
-  if (host.includes('facebook')) return 'FB';
-  return host;
-}
-
-// ============== PERSISTENT DUPLICATE CHECK ==============
-async function isPersistentDuplicate(mobile) {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(SENT_NUMBERS_KEY, (result) => {
-      const sentLog = result[SENT_NUMBERS_KEY] || [];
-      resolve(sentLog.includes(mobile));
-    });
-  });
-}
-
-// ============== UI PANEL ==============
-function createControlPanel() {
-  if (document.getElementById('lead-agent-panel')) return;
-  
-  const panel = document.createElement('div');
-  panel.id = 'lead-agent-panel';
-  panel.style.position = 'fixed';
-  panel.style.bottom = '12px';
-  panel.style.right = '12px';
-  panel.style.zIndex = '999999';
-  panel.style.background = 'rgba(0,0,0,0.85)';
-  panel.style.color = '#fff';
-  panel.style.fontSize = '12px';
-  panel.style.fontFamily = 'system-ui, sans-serif';
-  panel.style.padding = '8px';
-  panel.style.borderRadius = '8px';
-  panel.style.boxShadow = '0 0 8px rgba(0,0,0,0.5)';
-  panel.style.maxWidth = '280px';
-  panel.style.wordBreak = 'break-word';
-
-  panel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-      <strong style="font-size:11px;">Lead Agent V8</strong>
-      <label style="font-size:11px; cursor:pointer;">
-        <input type="checkbox" id="la-auto-toggle" style="vertical-align:middle; margin-right:2px;" />
-        Auto
-      </label>
-    </div>
-    <button id="la-scan-page" style="width:100%; margin-bottom:3px; font-size:11px; cursor:pointer; padding:4px;">Scan Page Now</button>
-    <button id="la-scan-chats" style="width:100%; margin-bottom:3px; font-size:11px; cursor:pointer; padding:4px;">Scan Old Chats</button>
-    <button id="la-send-last" style="width:100%; margin-bottom:4px; font-size:11px; cursor:pointer; padding:4px;">Send Last Number</button>
-    <div style="font-size:10px; margin-bottom:4px;">
-      Last: <span id="la-last-mobile-span" style="color:#4CAF50;">-</span>
-    </div>
-    <input id="la-note" type="text" placeholder="Note/Tag" style="width:100%; font-size:11px; margin-bottom:4px; padding:3px;" />
-    <div id="la-status" style="font-size:10px; opacity:0.8; color:#FFD700;">Status: Ready</div>
-  `;
-  
-  document.body.appendChild(panel);
-
-  const autoToggle = document.getElementById('la-auto-toggle');
-  const noteInput = document.getElementById('la-note');
-  
-  autoToggle.checked = !!settings.autoEnabled;
-  noteInput.value = settings.defaultNote;
-
-  autoToggle.addEventListener('change', () => {
-    settings.autoEnabled = autoToggle.checked;
-    chrome.storage.sync.set({ autoEnabled: settings.autoEnabled });
-    setStatus(settings.autoEnabled ? 'auto ON' : 'auto OFF');
-  });
-
-  noteInput.addEventListener('change', () => {
-    settings.defaultNote = noteInput.value.trim();
-    chrome.storage.sync.set({ defaultNote: settings.defaultNote });
-  });
-
-  document.getElementById('la-scan-page').addEventListener('click', () => {
-    setStatus('manual scan page...');
-    extractFromPage('MANUAL_PAGE');
-  });
-
-  document.getElementById('la-scan-chats').addEventListener('click', () => {
-    setStatus('manual scan chats...');
-    extractFromPage('MANUAL_CHAT');
-  });
-
-  document.getElementById('la-send-last').addEventListener('click', () => {
-    if (!lastCapturedLead || !lastCapturedLead.mobile) {
-      setStatus('no last number');
-      return;
-    }
-    setStatus('sending last number...');
-    const leadToSend = Object.assign({}, lastCapturedLead, { context: 'MANUAL_SINGLE', followUp: settings.defaultNote || lastCapturedLead.followUp });
-    sendLead(leadToSend);
-  });
-}
-
-function setStatus(text) {
-  const el = document.getElementById('la-status');
-  if (el) el.textContent = 'Status: ' + text;
-}
-
-function updateLastMobileUI() {
-  const el = document.getElementById('la-last-mobile-span');
-  if (!el) return;
-  if (lastCapturedLead && lastCapturedLead.mobile) {
-    el.textContent = lastCapturedLead.mobile;
-  } else {
-    el.textContent = '-';
-  }
-}
-
-// ============== CORE SCAN ==============
-function extractFromPage(context) {
+function extractAllData() {
   try {
-    const body = document.body;
-    if (!body) return;
-
-    const text = cleanText(body.innerText);
-    if (!text) return;
+    const pageText = document.body.innerText;
+    if (!pageText) return null;
 
     // Extract phones
-    const phonesRaw = text.match(REGEX_PHONE) || [];
-    const phones = [];
+    const phonesRaw = pageText.match(REGEX_PHONE) || [];
+    const phones = new Set();
     phonesRaw.forEach(p => {
       const normalized = p.replace(/[^0-9]/g, '');
-      if (normalized.length >= 10) phones.push(normalized.slice(-10));
+      if (normalized.length === 10 || normalized.length === 12) {
+        phones.add(normalized.slice(-10));
+      }
     });
 
-    const uniquePhones = Array.from(new Set(phones));
-    if (!uniquePhones.length) {
-      if (context.startsWith('MANUAL')) setStatus('no numbers found');
-      return;
-    }
+    if (phones.size === 0) return null;
 
-    // Extract RegNo
-    const upperText = text.toUpperCase();
-    const regMatches = upperText.match(REGEX_REGNO) || [];
-    const regNo = regMatches.length ? regMatches[0] : '';
+    // Extract registration number
+    const regnoMatch = pageText.match(REGEX_REGNO);
+    const regNo = regnoMatch ? regnoMatch[0] : '';
 
-    // Extract car model from title
-    const titleEl = document.querySelector('h1') || document.querySelector('title');
-    const carModel = cleanText(titleEl?.innerText || document.title);
+    // Extract year
+    const yearMatches = pageText.match(REGEX_YEAR) || [];
+    const year = yearMatches.length > 0 ? yearMatches[yearMatches.length - 1] : '';
 
-    // For each phone, create and send lead
-    uniquePhones.forEach(async mobile => {
-      // Check persistent duplicate BEFORE processing
-      if (await isPersistentDuplicate(mobile)) {
-        console.log(`DUPLICATE (persistent): ${mobile}`);
-        return; // Skip this number
+    // Extract KM
+    const kmMatch = pageText.match(REGEX_KM);
+    const km = kmMatch ? kmMatch[0].match(/\d+/)[0] : '';
+
+    // Extract title/model from page
+    const titleEl = document.querySelector('h1') || document.querySelector('[data-testid="ad-title"]');
+    const carModel = titleEl ? cleanText(titleEl.innerText) : document.title;
+
+    // Extract address
+    const addressEl = document.querySelector('[data-testid="location"]') || document.querySelector('.location');
+    const address = addressEl ? cleanText(addressEl.innerText) : '';
+
+    // Build leads array
+    const leads = [];
+    phones.forEach(mobile => {
+      if (!seenNumbers.has(mobile)) {
+        leads.push({
+          mobile,
+          regNo,
+          carModel,
+          year,
+          km,
+          address,
+          source: 'OLX/FB',
+          timestamp: new Date().toISOString()
+        });
+        seenNumbers.add(mobile);
       }
-
-      // Check page-level
-      if (seenNumbers.has(mobile)) {
-        if (!context.startsWith('MANUAL')) return;
-      }
-
-      seenNumbers.add(mobile);
-
-      const lead = {
-        name: '',
-        mobile,
-        regNo,
-        carModel,
-        variant: '',
-        year: '',
-        km: '',
-        address: '',
-        followUp: settings.defaultNote,
-        source: getSource(),
-        context: context || 'AUTO_SCAN'
-      };
-
-      lastCapturedLead = Object.assign({}, lead);
-      updateLastMobileUI();
-      sendLead(lead);
     });
 
-    if (context.startsWith('MANUAL')) {
-      setStatus(`sent ${uniquePhones.length} number(s)`);
-    }
+    return leads.length > 0 ? leads : null;
   } catch (e) {
-    console.error('Lead scan error:', e);
-    setStatus('error see console');
+    console.error('Extraction error:', e);
+    return null;
   }
 }
 
-// ============== SENDER via background ==============
-function sendLead(lead) {
-  chrome.runtime.sendMessage(
-    { type: 'SEND_LEAD', payload: lead },
-    (resp) => {
-      if (chrome.runtime.lastError) {
-        console.error('SEND_LEAD runtime error:', chrome.runtime.lastError);
-        setStatus('send error');
-        return;
-      }
-      if (!resp || !resp.ok) {
-        console.error('SEND_LEAD failed:', resp?.error);
-        setStatus('send error');
-        return;
-      }
-      setStatus(`${lead.mobile} ok`);
-    }
-  );
-}
+function createPanel() {
+  if (document.getElementById('lead-panel')) return;
 
-// ============== INIT ==============
-function initLeadAgent() {
-  chrome.storage.sync.get(['autoEnabled', 'defaultNote'], (res) => {
-    settings.autoEnabled = res.autoEnabled !== undefined ? res.autoEnabled : true;
-    settings.defaultNote = res.defaultNote || '';
+  const panel = document.createElement('div');
+  panel.id = 'lead-panel';
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(0,0,0,0.9);
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: system-ui;
+    font-size: 12px;
+    z-index: 999999;
+    min-width: 250px;
+    max-width: 300px;
+  `;
 
-    createControlPanel();
+  panel.innerHTML = `
+    <div style="font-weight: bold; margin-bottom: 8px; color: #0f0;">📱 Lead Agent</div>
+    <button id="scan-btn" style="width:100%; padding:8px; margin-bottom:6px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:11px;">SCAN PAGE</button>
+    <div id="status" style="font-size:11px; padding:6px; background:rgba(255,255,255,0.1); border-radius:4px; min-height:20px;">Ready</div>
+  `;
 
-    if (settings.autoEnabled) {
-      setStatus('auto ON');
-      setTimeout(() => extractFromPage('AUTO_SCAN'), 4000);
-      setInterval(() => extractFromPage('AUTO_SCAN'), 8000);
+  document.body.appendChild(panel);
+
+  document.getElementById('scan-btn').addEventListener('click', () => {
+    const leads = extractAllData();
+    if (leads) {
+      lastCapturedLead = leads[0];
+      const data = leads.map(l => `${l.mobile}|${l.regNo}|${l.carModel}|${l.year}|${l.km}|${l.address}`).join('\n');
+      chrome.runtime.sendMessage({ type: 'COPY_DATA', data }, response => {
+        document.getElementById('status').textContent = `✅ Copied: ${leads.length} numbers`;
+        setTimeout(() => { document.getElementById('status').textContent = 'Ready'; }, 3000);
+      });
     } else {
-      setStatus('auto OFF');
+      document.getElementById('status').textContent = '❌ No data found';
     }
   });
+}
+
+function init() {
+  chrome.storage.sync.get(SENT_NUMBERS_KEY, (res) => {
+    if (res[SENT_NUMBERS_KEY]) {
+      res[SENT_NUMBERS_KEY].forEach(num => seenNumbers.add(num));
+    }
+  });
+  createPanel();
+  // Auto-scan on page load
+  setTimeout(() => {
+    const leads = extractAllData();
+    if (leads && leads.length > 0) {
+      document.getElementById('status').textContent = `✅ Found: ${leads.length} numbers`;
+    }
+  }, 2000);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initLeadAgent);
+  document.addEventListener('DOMContentLoaded', init);
 } else {
-  initLeadAgent();
+  init();
 }
