@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "OLX/FB Lead Agent: No-Duplicate V8",
+  "version": "8.0",
+  "description": "Chrome Extension for OLX/FB Lead Extraction with Persistent Duplicate Detection and No-Miss Queue System",
+  "permissions": [
+    "storage",
+    "scripting",
+    "notifications"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_icon": "icon128.png",
+    "default_title": "OLX/FB Lead Agent V8"
+  },
+  "options_page": "options.html"
+}
