@@ -2,26 +2,11 @@
   "manifest_version": 3,
   "name": "Leads Agent Pro by Umair",
   "version": "8.0",
-  "description": "Chrome Extension for OLX/FB Lead Extraction with Persistent Duplicate Detection and No-Miss Queue System",
-  "permissions": [
-    "storage",
-    "scripting",
-    "notifications"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ],
-  "action": {
-    "default_title": "OLX/FB Lead Agent V8"
-  },
+  "description": "Lead extraction and management for OLX/FB",
+  "permissions": ["storage", "scripting", "notifications"],
+  "host_permissions": ["<all_urls>"],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"]}],
+  "action": {"default_title": "Leads Agent Pro by Umair"},
   "options_page": "options.html"
 }
