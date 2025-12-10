@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LEADS PRO - Supervisor Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    header {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 { color: #667eea; font-size: 28px; }
+    .stats { display: flex; gap: 15px; }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 150px;
+    }
+    .stat-card h3 { font-size: 24px; }
+    .stat-card p { font-size: 12px; opacity: 0.8; }
+    
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .panel h2 { color: #667eea; margin-bottom: 15px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f5f5f5;
+      color: #667eea;
+      font-weight: 600;
+    }
+    tr:hover { background: #f9f9f9; }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-owner { background: #e8f5e9; color: #2e7d32; }
+    .badge-dealer { background: #fff3e0; color: #e65100; }
+    .badge-active { background: #e3f2fd; color: #1565c0; }
+    
+    .control-section {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input, select, button {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover { background: #764ba2; }
+    
+    .leads-feed {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #eee;
+      border-radius: 8px;
+    }
+    .lead-item {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+    }
+    .lead-item:last-child { border-bottom: none; }
+    .lead-item strong { color: #667eea; }
+    .lead-item small { color: #999; }
+    
+    @media (max-width: 900px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚀 LEADS PRO by UMAIR - Supervisor Dashboard</h1>
+      <div class="stats">
+        <div class="stat-card">
+          <h3>45</h3>
+          <p>Leads Today</p>
+        </div>
+        <div class="stat-card">
+          <h3>12</h3>
+          <p>Active Agents</p>
+        </div>
+        <div class="stat-card">
+          <h3>8</h3>
+          <p>Campaigns</p>
+        </div>
+      </div>
+    </header>
+
+    <div class="main-grid">
+      <!-- Real-time Leads Feed -->
+      <div class="panel">
+        <h2>📊 Real-Time Leads (5sec ahead)</h2>
+        <div class="control-section">
+          <input type="text" placeholder="Search leads...">
+          <select>
+            <option>All Sources</option>
+            <option>OLX</option>
+            <option>Facebook</option>
+          </select>
+        </div>
+        <div class="leads-feed" id="leadsFeed">
+          <div class="lead-item">
+            <strong>+91 98765 43210</strong> - Hyundai Creta <span class="badge badge-owner">OWNER</span>
+            <br><small>Location: Mumbai | RegNo: MH02AB1234 | Status: Processing</small>
+          </div>
+          <div class="lead-item">
+            <strong>+91 87654 32109</strong> - Mahindra XUV <span class="badge badge-dealer">DEALER</span>
+            <br><small>Location: Delhi | RegNo: DL01CD5678 | Status: Skipped (Multiple posts)</small>
+          </div>
+          <div class="lead-item">
+            <strong>+91 76543 21098</strong> - Maruti Swift <span class="badge badge-owner">OWNER</span>
+            <br><small>Location: Pune | RegNo: MH03EF9012 | Time: 5 sec BEFORE agent</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent Management -->
+      <div class="panel">
+        <h2>👥 Agent Management & License</h2>
+        <div class="control-section">
+          <button>+ Add New Agent</button>
+          <button>View License Plans</button>
+        </div>
+        <table>
+          <tr>
+            <th>Agent Name</th>
+            <th>Plan</th>
+            <th>Leads/Day</th>
+            <th>Status</th>
+          </tr>
+          <tr>
+            <td>Umair (Owner)</td>
+            <td><strong>Enterprise</strong></td>
+            <td>∞ Unlimited</td>
+            <td><span class="badge badge-active">ACTIVE</span></td>
+          </tr>
+          <tr>
+            <td>Agent 1</td>
+            <td>Premium</td>
+            <td>200/day</td>
+            <td><span class="badge badge-active">ACTIVE</span></td>
+          </tr>
+          <tr>
+            <td>Agent 2</td>
+            <td>Basic</td>
+            <td>50/day</td>
+            <td><span class="badge badge-active">ACTIVE</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Campaign Manager -->
+      <div class="panel">
+        <h2>📢 Campaign Management</h2>
+        <div class="control-section">
+          <button>+ New Campaign</button>
+          <button>View Stats</button>
+        </div>
+        <table>
+          <tr>
+            <th>Campaign Name</th>
+            <th>Messages Sent</th>
+            <th>Owner Detection</th>
+            <th>Status</th>
+          </tr>
+          <tr>
+            <td>Mumbai Car Hunt</td>
+            <td>156/200</td>
+            <td>89%</td>
+            <td><span class="badge badge-active">RUNNING</span></td>
+          </tr>
+          <tr>
+            <td>Delhi Bikes</td>
+            <td>89/100</td>
+            <td>76%</td>
+            <td><span class="badge badge-active">RUNNING</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Settings & Controls -->
+      <div class="panel">
+        <h2>⚙️ System Settings</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <label><strong>Message Delay (sec):</strong></label>
+            <input type="number" value="5" min="1" max="60" style="width: 100%;">
+          </div>
+          <div>
+            <label><strong>Daily Message Limit:</strong></label>
+            <input type="number" value="20" min="1" style="width: 100%;">
+          </div>
+          <div>
+            <label><strong>Owner Detection Accuracy:</strong></label>
+            <input type="range" min="0" max="100" value="89" style="width: 100%;">
+          </div>
+          <div>
+            <label><strong>Max Owners per Location/Day:</strong></label>
+            <input type="number" value="15" style="width: 100%;">
+          </div>
+          <button style="margin-top: 10px; width: 100%;">💾 Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
